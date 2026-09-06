@@ -1,0 +1,20 @@
+# Backend Maven
+target/
+
+# Configuration locale contenant des secrets
+.env
+
+# IDE
+.idea/
+.vscode/
+.classpath
+.project
+.settings/
+*.iml
+
+# Frontend
+node_modules/
+dist/
+
+# Système d'exploitation
+.DS_Store
