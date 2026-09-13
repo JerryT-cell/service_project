@@ -1,0 +1,314 @@
+@startuml
+
+title Backend Briko - Diagramme de classes
+top to bottom direction
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package application {
+    class BrikoApplication <<SpringBootApplication>> {
+        + {static} void main(String[] args)
+    }
+}
+
+package auth {
+    class AuthController <<RestController>> {
+        - AuthService authService
+        + ResponseEntity<AuthResponse> register(RegisterRequest request)
+        + ResponseEntity<AuthResponse> login(LoginRequest request)
+    }
+
+    class AuthService <<Service>> {
+        - UtilisateurRepository utilisateurRepository
+        - PasswordEncoder passwordEncoder
+        - AuthenticationManager authenticationManager
+        - JwtService jwtService
+        + AuthResponse register(RegisterRequest request)
+        + AuthResponse login(LoginRequest request)
+        - AuthResponse buildResponse(Utilisateur utilisateur)
+        - String normalizeEmail(String email)
+    }
+
+    class RegisterRequest <<record>> {
+        + String nom
+        + String telephone
+        + String email
+        + String motDePasse
+        + Role role
+    }
+
+    class LoginRequest <<record>> {
+        + String telephone
+        + String motDePasse
+    }
+
+    class AuthResponse <<record>> {
+        + String token
+        + Long id
+        + String nom
+        + Role role
+    }
+}
+
+package utilisateur {
+    class Utilisateur <<Entity>> {
+        - Long id
+        - String nom
+        - String telephone
+        - String email
+        - String motDePasseHash
+        - Role role
+        - boolean actif
+        - OffsetDateTime dateCreation
+        - OffsetDateTime dateModification
+        ~ void initializeDates()
+        ~ void updateModificationDate()
+    }
+
+    enum Role {
+        CLIENT
+        PRESTATAIRE
+        ADMIN
+    }
+
+    interface UtilisateurRepository <<Repository>> {
+        + Optional<Utilisateur> findByTelephone(String telephone)
+        + boolean existsByTelephone(String telephone)
+    }
+}
+
+package categorie {
+    class CategorieController <<RestController>> {
+        - CategorieService categorieService
+        + ResponseEntity<List<CategorieDTO>> findAllActives()
+    }
+
+    class CategorieService <<Service>> {
+        - CategorieRepository categorieRepository
+        + List<CategorieDTO> findAllActives()
+    }
+
+    interface CategorieRepository <<Repository>> {
+        + List<Categorie> findAllByActifTrueOrderByOrdreAffichageAsc()
+    }
+
+    class Categorie <<Entity>> {
+        - Long id
+        - String nom
+        - String slug
+        - String description
+        - String icone
+        - int ordreAffichage
+        - boolean actif
+    }
+
+    class CategorieDTO <<record>> {
+        + Long id
+        + String nom
+        + String slug
+        + String description
+        + String icone
+    }
+}
+
+package artisan {
+    class ArtisanController <<RestController>> {
+        - ArtisanService artisanService
+        + ResponseEntity<List<ArtisanResumeDTO>> rechercher(String ville, String categorieSlug)
+        + ResponseEntity<ArtisanDetailDTO> findById(Long id)
+    }
+
+    class ArtisanService <<Service>> {
+        - {static} StatutArtisan STATUT_PUBLIC
+        - ArtisanRepository artisanRepository
+        + List<ArtisanResumeDTO> rechercher(String ville, String categorieSlug)
+        + ArtisanDetailDTO findById(Long id)
+        - String normalize(String value)
+        - String normalizeSlug(String value)
+    }
+
+    interface ArtisanRepository <<Repository>> {
+        + List<Artisan> findDistinctByStatutOrderByNomAffichageAsc(StatutArtisan statut)
+        + List<Artisan> findDistinctByVilleIgnoreCaseAndStatutOrderByNomAffichageAsc(String ville, StatutArtisan statut)
+        + List<Artisan> findDistinctByCategoriesSlugIgnoreCaseAndStatutOrderByNomAffichageAsc(String categorieSlug, StatutArtisan statut)
+        + List<Artisan> findDistinctByVilleIgnoreCaseAndCategoriesSlugIgnoreCaseAndStatutOrderByNomAffichageAsc(String ville, String categorieSlug, StatutArtisan statut)
+        + Optional<Artisan> findByIdAndStatut(Long id, StatutArtisan statut)
+    }
+
+    class ArtisanMapper <<utility>> {
+        + {static} ArtisanResumeDTO toResumeDTO(Artisan artisan)
+        + {static} ArtisanDetailDTO toDetailDTO(Artisan artisan)
+        - {static} List<String> extractCategoryNames(Artisan artisan)
+        - {static} boolean isVerified(Artisan artisan)
+    }
+
+    class Artisan <<Entity>> {
+        - Long id
+        - Utilisateur utilisateur
+        - String nomAffichage
+        - String description
+        - String ville
+        - String quartier
+        - String zoneIntervention
+        - Integer anneesExperience
+        - String photoProfilUrl
+        - StatutArtisan statut
+        - BigDecimal noteMoyenne
+        - int nombreAvis
+        - OffsetDateTime dateValidation
+        - Utilisateur validePar
+        - OffsetDateTime dateCreation
+        - OffsetDateTime dateModification
+        - List<Categorie> categories
+        ~ void initializeDates()
+        ~ void updateModificationDate()
+    }
+
+    enum StatutArtisan {
+        EN_ATTENTE
+        VALIDE
+        REJETE
+        SUSPENDU
+        A_RECONTACTER
+    }
+
+    class ArtisanResumeDTO <<record>> {
+        + Long id
+        + String nomAffichage
+        + String ville
+        + String quartier
+        + List<String> categories
+        + BigDecimal noteMoyenne
+        + int nombreAvis
+        + String photoProfilUrl
+        + boolean verifie
+    }
+
+    class ArtisanDetailDTO <<record>> {
+        + Long id
+        + String nomAffichage
+        + String ville
+        + String quartier
+        + List<String> categories
+        + BigDecimal noteMoyenne
+        + int nombreAvis
+        + String photoProfilUrl
+        + boolean verifie
+        + String description
+        + String zoneIntervention
+        + Integer anneesExperience
+        + String telephone
+        + OffsetDateTime dateValidation
+    }
+}
+
+package "common.config" as common_config {
+    class CorsConfig <<Configuration>> {
+        - Environment environment
+        + void addCorsMappings(CorsRegistry registry)
+    }
+}
+
+package "common.security" as common_security {
+    class SecurityConfig <<Configuration>> {
+        - JwtAuthenticationFilter jwtAuthenticationFilter
+        - ObjectMapper objectMapper
+        + SecurityFilterChain securityFilterChain(HttpSecurity http)
+        + PasswordEncoder passwordEncoder()
+        + AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
+        - void writeSecurityError(response, request, status, message)
+    }
+
+    class JwtAuthenticationFilter <<Filter>> {
+        - JwtService jwtService
+        - UtilisateurDetailsService utilisateurDetailsService
+        # void doFilterInternal(request, response, filterChain)
+        - void authenticateRequest(String token, request)
+    }
+
+    class JwtService <<Service>> {
+        - Environment environment
+        + String generateToken(Utilisateur utilisateur)
+        + String extractTelephone(String token)
+        + boolean isTokenValid(String token, UserDetails userDetails)
+        - Claims extractAllClaims(String token)
+        - SecretKey getSigningKey()
+    }
+
+    class UtilisateurDetailsService <<Service>> {
+        - UtilisateurRepository utilisateurRepository
+        + UserDetails loadUserByUsername(String telephone)
+    }
+}
+
+package "common.exception" as common_exception {
+    class GlobalExceptionHandler <<RestControllerAdvice>> {
+        + ResponseEntity<ApiError> handleRessourceIntrouvable(exception, request)
+        + ResponseEntity<ApiError> handleConflitMetier(exception, request)
+        + ResponseEntity<ApiError> handleValidation(exception, request)
+        + ResponseEntity<ApiError> handleAccessDenied(exception, request)
+        + ResponseEntity<ApiError> handleBadCredentials(exception, request)
+        + ResponseEntity<ApiError> handleUnexpectedException(exception, request)
+        - ResponseEntity<ApiError> buildResponse(status, message, request, champs)
+    }
+
+    class ApiError <<record>> {
+        + Instant timestamp
+        + int status
+        + String erreur
+        + String message
+        + String chemin
+        + Map<String, String> champs
+    }
+
+    class RessourceIntrouvableException <<Exception>>
+    class ConflitMetierException <<Exception>>
+}
+
+AuthController --> AuthService : délègue
+AuthController ..> RegisterRequest : reçoit
+AuthController ..> LoginRequest : reçoit
+AuthController ..> AuthResponse : renvoie
+AuthService --> UtilisateurRepository : persiste et recherche
+AuthService --> JwtService : génère le JWT
+AuthService ..> ConflitMetierException : peut lever
+
+UtilisateurRepository --> Utilisateur : gère
+Utilisateur --> Role : possède
+RegisterRequest --> Role : demande
+AuthResponse --> Role : expose
+
+CategorieController --> CategorieService : délègue
+CategorieController ..> CategorieDTO : renvoie
+CategorieService --> CategorieRepository : consulte
+CategorieService ..> CategorieDTO : construit
+CategorieRepository --> Categorie : gère
+
+ArtisanController --> ArtisanService : délègue
+ArtisanController ..> ArtisanResumeDTO : renvoie
+ArtisanController ..> ArtisanDetailDTO : renvoie
+ArtisanService --> ArtisanRepository : recherche
+ArtisanService ..> ArtisanMapper : convertit
+ArtisanService ..> RessourceIntrouvableException : peut lever
+ArtisanRepository --> Artisan : gère
+ArtisanMapper ..> Artisan : lit
+ArtisanMapper ..> ArtisanResumeDTO : construit
+ArtisanMapper ..> ArtisanDetailDTO : construit
+
+Artisan "0..1" --> "1" Utilisateur : compte propriétaire
+Artisan "0..*" --> "0..1" Utilisateur : validé par
+Artisan "0..*" -- "0..*" Categorie : exerce
+Artisan --> StatutArtisan : possède
+
+SecurityConfig --> JwtAuthenticationFilter : place dans la chaîne
+JwtAuthenticationFilter --> JwtService : vérifie le JWT
+JwtAuthenticationFilter --> UtilisateurDetailsService : charge le compte
+UtilisateurDetailsService --> UtilisateurRepository : recherche
+JwtService ..> Utilisateur : crée les claims
+
+GlobalExceptionHandler ..> RessourceIntrouvableException : intercepte
+GlobalExceptionHandler ..> ConflitMetierException : intercepte
+GlobalExceptionHandler ..> ApiError : renvoie
+
+@enduml

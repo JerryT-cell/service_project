@@ -52,6 +52,17 @@ Les principaux domaines Java se trouvent sous
 - `artisan` : recherche et profils publics
 - `common` : configuration, sécurité et gestion des erreurs
 
+Le [diagramme de classes du backend](backend/docs/backend-class-diagram.md)
+présente les dépendances entre contrôleurs, services, repositories, entités,
+DTO et composants de sécurité.
+
+Le [guide d'authentification](backend/src/main/java/com/briko/auth/README.md)
+explique les workflows d'inscription, de connexion et de validation JWT ainsi
+que le rôle de BCrypt.
+
+Une [version contenant uniquement le diagramme UML](backend/docs/backend-class-diagram.puml)
+est également disponible pour un affichage direct.
+
 ## Prérequis
 
 - JDK 25

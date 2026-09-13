@@ -4,6 +4,9 @@ target/
 # Configuration locale contenant des secrets
 .env
 
+# Spécification de travail locale
+backend/briko-instructions-backend-phase0.md
+frontend/briko-instructions-frontend-phase0.md
 # IDE
 .idea/
 .vscode/
